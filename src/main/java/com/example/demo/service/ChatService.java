@@ -3,6 +3,8 @@ package com.example.demo.service;
 import com.example.demo.dto.ChatGptRequest;
 import com.example.demo.dto.ChatGptResponse;
 import com.example.demo.dto.Input;
+import com.example.demo.dto.SummaryResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +13,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.stream.IntStream;
 
@@ -117,14 +120,37 @@ public class ChatService {
 		return new ChatGptRequest(model, prompt);
 	}
 
-	public ChatGptResponse getChatGptResponse(String summaries) {
-		ChatGptRequest chatGptRequest = getChatGptRequestPrompt(summaries);
-		return restTemplate.postForObject(apiUrl, chatGptRequest, ChatGptResponse.class);
-	}
+
 
 	public int calculateTotalChunks(String prompt) {
 		int chunks = (int) Math.ceil((double) prompt.length() / TOKEN_SIZE);
 		log.info("Token Size: {} Chunks: {}", TOKEN_SIZE, chunks);
 		return chunks;
 	}
+
+	public ChatGptResponse getChatGptResponse(String summaries) {
+		ChatGptRequest chatGptRequest = getChatGptRequestPrompt(summaries);
+		return restTemplate.postForObject(apiUrl, chatGptRequest, ChatGptResponse.class);
+	}
+
+	public Optional<SummaryResponse> getChatGptTitleAndDescriptionForSummaries(String summaries) {
+		ChatGptResponse response = getChatGptResponse(summaries);
+
+		if (response == null || response.getChoices() == null || response.getChoices().isEmpty()) {
+			return Optional.empty();
+		}
+
+		String content = response.getChoices().getFirst().getMessage().getContent();
+		content = content.replace("```json", "").replace("```", "").trim();
+		SummaryResponse summaryResponse;
+		try {
+			summaryResponse = new ObjectMapper().readValue(content, SummaryResponse.class);
+		} catch (Exception e) {
+			log.error("Error parsing JSON content: {}", e.getMessage());
+			return Optional.of(new SummaryResponse("Error", "Failed to parse response"));
+		}
+
+		return Optional.of(summaryResponse);
+	}
+
 }
