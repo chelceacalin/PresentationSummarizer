@@ -12,4 +12,4 @@ How it works:
 * We create a prompt in which we tell the LLM to generate a json { title: 'identified title' , description: 'identified description' } based on the concatenation of the summaries
 
 </div>
-[LICENSE](LICENSE)
+
